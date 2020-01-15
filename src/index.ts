@@ -19,7 +19,8 @@ interface MotionSensor {
     occupancy: boolean;
 }
 
-const egFlur = toTopic('cmnd/eg-flur/POWER');
+const toEgFlur = toTopic('cmnd/eg-flur/POWER');
+const ofEgFlur = ofTopic<string>('stat/eg-flur/POWER');
 
 ofTopic<Button>('zigbee2mqtt/Kellerabgang_Button')
     .pipe(
@@ -29,26 +30,49 @@ ofTopic<Button>('zigbee2mqtt/Kellerabgang_Button')
     .subscribe(val => {
         myLogger.info(`${val}`);
         if (val === 'single') {
-            egFlur.next('TOGGLE');
+            toEgFlur.next('TOGGLE');
         } else if (val === 'double') {
-            egFlur.next('ON');
+            toEgFlur.next('ON');
         } else if (val === 'triple') {
-            egFlur.next('OFF');
+            toEgFlur.next('OFF');
         }
     });
 
-const staircaseMotion = ofTopic<MotionSensor>('zigbee2mqtt/OG_Treppenhaus_Bewegung');
-const staircaseLight = ofTopic<string>('stat/treppenhaus/POWER');
+const staircaseEGMotion = ofTopic<MotionSensor>('zigbee2mqtt/EG_Treppenhaus_Bewegung');
+const staircaseOGMotion = ofTopic<MotionSensor>('zigbee2mqtt/OG_Treppenhaus_Bewegung');
+const ofStaircaseLight = ofTopic<string>('stat/treppenhaus/POWER');
+const toStaircaseLightTimer = toTopic<number>('cmd/treppenhaus/RuleTimer1');
 
-combineLatest([staircaseMotion, staircaseLight])
+combineLatest([staircaseOGMotion, ofStaircaseLight, ofEgFlur])
     .pipe(
         debounceTime(5000),
-        filter(([motion, light]) => motion.message.illuminance < 15),
-        filter(([motion, light]) => light.message === 'OFF')
+        tap(([motion, light, flur]) =>
+            myLogger.info(`StaircaseOGMotion m:${JSON.stringify(motion)} staircasse: ${JSON.stringify(light)} hall ${JSON.stringify(flur)}`)
+        ),
+        filter(([motion]) => motion.message.illuminance < 15),
+        filter(([motion]) => motion.message.occupancy),
+        filter(([motion, light]) => light.message === 'OFF'),
+        filter(([motion, light, flur]) => flur.message === 'OFF')
     )
     .subscribe(_ => {
-        egFlur.next('ON');
+        myLogger.info('Nightlight: Switching on');
+        toEgFlur.next('ON');
         of(undefined)
             .pipe(delay(60000))
-            .subscribe(__ => egFlur.next('OFF'));
+            .subscribe(__ => {
+                myLogger.info('Nightlight: Switching off');
+                toEgFlur.next('OFF');
+            });
+    });
+
+combineLatest([staircaseEGMotion, ofStaircaseLight])
+    .pipe(
+        debounceTime(5000),
+        tap(([motion, light]) => myLogger.info(`Staircase Light prolonger ${JSON.stringify(motion)} ${light.message}`)),
+        filter(([motion, light]) => motion.message.occupancy),
+        filter(([motion, light]) => light.message === 'ON')
+    )
+    .subscribe(_ => {
+        myLogger.info('Staircase: Setting timer time');
+        toStaircaseLightTimer.next(240);
     });
