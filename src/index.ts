@@ -1,4 +1,4 @@
-import { debounceTime, delay, filter, map, tap } from 'rxjs/internal/operators';
+import { debounceTime, delay, filter, map, switchMapTo, tap } from 'rxjs/internal/operators';
 import { myLogger } from './logger';
 import { ofTopic } from './event-source';
 import { toTopic } from './event-sink';
@@ -49,20 +49,22 @@ combineLatest([staircaseOGMotion, ofStaircaseLight, ofEgFlur])
         tap(([motion, light, flur]) =>
             myLogger.info(`StaircaseOGMotion m:${JSON.stringify(motion)} staircasse: ${JSON.stringify(light)} hall ${JSON.stringify(flur)}`)
         ),
-        filter(([motion]) => motion.message.illuminance < 15),
+        filter(([motion]) => motion.message.illuminance < 10),
         filter(([motion]) => motion.message.occupancy),
         filter(([motion, light]) => light.message === 'OFF'),
-        filter(([motion, light, flur]) => flur.message === 'OFF')
+        filter(([motion, light, flur]) => flur.message === 'OFF'),
+        filter(_ => new Date().getHours() >= 3),
+        filter(_ => new Date().getHours() <= 7),
+        tap(_ => myLogger.info('Nightlight: Switching on')),
+        tap(_ => toEgFlur.next('ON')),
+        switchMapTo(
+            of(undefined)
+                .pipe(delay(60000))
+        )
     )
     .subscribe(_ => {
-        myLogger.info('Nightlight: Switching on');
-        toEgFlur.next('ON');
-        of(undefined)
-            .pipe(delay(60000))
-            .subscribe(__ => {
-                myLogger.info('Nightlight: Switching off');
-                toEgFlur.next('OFF');
-            });
+        myLogger.info('Nightlight: Switching off');
+        toEgFlur.next('OFF');
     });
 
 combineLatest([staircaseEGMotion, ofStaircaseLight])
