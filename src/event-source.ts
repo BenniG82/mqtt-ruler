@@ -13,7 +13,7 @@ export const ofTopic = <T>(topic: string) => EventSource.ofTopic<T>(topic);
 
 export class EventSource<T> {
     private client: mqtt.MqttClient;
-    private output$$ = new Subject<MqttMessage<T>>();
+    private readonly output$$ = new Subject<MqttMessage<T>>();
 
     static ofTopic<T>(topic: string): Observable<MqttMessage<T>> {
         const eventSource = new EventSource<T>();

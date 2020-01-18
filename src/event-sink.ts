@@ -13,7 +13,7 @@ export const toTopic = <T>(topic: string) => EventSink.toTopic<T>(topic);
 
 export class EventSink<T> {
     private client: mqtt.MqttClient;
-    private output$$ = new ReplaySubject<T>(100);
+    private readonly output$$ = new ReplaySubject<T>(100);
 
     static toTopic<T>(topic: string): Subject<T> {
         const eventSink = new EventSink<T>();
