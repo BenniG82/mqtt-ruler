@@ -24,7 +24,7 @@ const ofEgFlur = ofTopic<string>('stat/eg-flur/POWER');
 
 const ofButtonSchlafzimmer = ofTopic<Button>('zigbee2mqtt/OG_Button_Schlafzimmer');
 const toOgSchlafzimmer = toTopic('cmnd/og-schlafzimmer/POWER');
-const toOgFlur = toTopic('cmnd/gg-flur/POWER');
+const toOgFlur = toTopic('cmnd/og-flur/POWER');
 
 ofTopic<Button>('zigbee2mqtt/Kellerabgang_Button')
     .pipe(
@@ -57,7 +57,6 @@ ofButtonSchlafzimmer
             toOgSchlafzimmer.next('TOGGLE');
         }
     });
-
 
 
 const staircaseEGMotion = ofTopic<MotionSensor>('zigbee2mqtt/EG_Treppenhaus_Bewegung');
