@@ -52,12 +52,12 @@ ofButtonSchlafzimmer
         if (val === 'single') {
             toOgFlur.next('TOGGLE');
         } else if (val === 'double') {
-            toOgFlur.next('ON');
-        } else if (val === 'triple') {
             toOgSchlafzimmer.next('TOGGLE');
+        } else if (val === 'triple') {
+            toOgFlur.next('OFF');
+            toOgSchlafzimmer.next('OFF');
         }
     });
-
 
 const staircaseEGMotion = ofTopic<MotionSensor>('zigbee2mqtt/EG_Treppenhaus_Bewegung');
 const staircaseOGMotion = ofTopic<MotionSensor>('zigbee2mqtt/OG_Treppenhaus_Bewegung');
