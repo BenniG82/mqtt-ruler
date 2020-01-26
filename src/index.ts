@@ -22,6 +22,10 @@ interface MotionSensor {
 const toEgFlur = toTopic('cmnd/eg-flur/POWER');
 const ofEgFlur = ofTopic<string>('stat/eg-flur/POWER');
 
+const ofButtonSchlafzimmer = ofTopic<Button>('zigbee2mqtt/OG_Button_Schlafzimmer');
+const toOgSchlafzimmer = toTopic('cmnd/og-schlafzimmer/POWER');
+const toOgFlur = toTopic('cmnd/gg-flur/POWER');
+
 ofTopic<Button>('zigbee2mqtt/Kellerabgang_Button')
     .pipe(
         tap(val => myLogger.debug(`received on topic ${val.topic}: ${JSON.stringify(val.message)}`)),
@@ -38,10 +42,28 @@ ofTopic<Button>('zigbee2mqtt/Kellerabgang_Button')
         }
     });
 
+ofButtonSchlafzimmer
+    .pipe(
+        tap(val => myLogger.debug(`received on topic ${val.topic}: ${JSON.stringify(val.message)}`)),
+        map(val => val.message.click)
+    )
+    .subscribe(val => {
+        myLogger.info(`${val}`);
+        if (val === 'single') {
+            toOgFlur.next('TOGGLE');
+        } else if (val === 'double') {
+            toOgFlur.next('ON');
+        } else if (val === 'triple') {
+            toOgSchlafzimmer.next('TOGGLE');
+        }
+    });
+
+
+
 const staircaseEGMotion = ofTopic<MotionSensor>('zigbee2mqtt/EG_Treppenhaus_Bewegung');
 const staircaseOGMotion = ofTopic<MotionSensor>('zigbee2mqtt/OG_Treppenhaus_Bewegung');
 const ofStaircaseLight = ofTopic<string>('stat/treppenhaus/POWER');
-const toStaircaseLightTimer = toTopic<number>('cmd/treppenhaus/RuleTimer1');
+const toStaircaseLightTimer = toTopic<number>('cmnd/treppenhaus/RuleTimer1');
 
 combineLatest([staircaseOGMotion, ofStaircaseLight, ofEgFlur])
     .pipe(
