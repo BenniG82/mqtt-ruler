@@ -24,7 +24,6 @@ const toOgFlur = toTopic('cmnd/og-flur/POWER');
 const toStaircase = toTopic('cmnd/treppenhaus/POWER');
 const toBasement = toTopic('cmnd/kg-flur/POWER');
 
-
 const ofEgFlur = ofTopic<string>('stat/eg-flur/POWER');
 
 const ofButtonSchlafzimmer = ofTopic<Button>('zigbee2mqtt/OG_Button_Schlafzimmer');
@@ -103,10 +102,6 @@ combineLatest([staircaseEGMotion, ofStaircaseLight])
         myLogger.info('Staircase: Setting timer time');
         toStaircaseLightTimer.next(240);
     });
-
-
-const toStaircase = toTopic('cmnd/treppenhaus1/POWER');
-
 
 interval(60000)
     .pipe(
