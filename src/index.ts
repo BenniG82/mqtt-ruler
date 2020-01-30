@@ -1,8 +1,8 @@
-import { debounceTime, delay, filter, map, switchMapTo, tap } from 'rxjs/internal/operators';
+import { debounce, debounceTime, delay, filter, map, switchMapTo, tap } from 'rxjs/internal/operators';
 import { myLogger } from './logger';
 import { ofTopic } from './event-source';
 import { toTopic } from './event-sink';
-import { combineLatest, of } from 'rxjs';
+import { combineLatest, interval, of, timer } from 'rxjs';
 
 interface Button {
     battery: number;
@@ -20,11 +20,15 @@ interface MotionSensor {
 }
 
 const toEgFlur = toTopic('cmnd/eg-flur/POWER');
+const toOgFlur = toTopic('cmnd/og-flur/POWER');
+const toStaircase = toTopic('cmnd/treppenhaus/POWER');
+const toBasement = toTopic('cmnd/kg-flur/POWER');
+
+
 const ofEgFlur = ofTopic<string>('stat/eg-flur/POWER');
 
 const ofButtonSchlafzimmer = ofTopic<Button>('zigbee2mqtt/OG_Button_Schlafzimmer');
 const toOgSchlafzimmer = toTopic('cmnd/og-schlafzimmer/POWER');
-const toOgFlur = toTopic('cmnd/og-flur/POWER');
 
 ofTopic<Button>('zigbee2mqtt/Kellerabgang_Button')
     .pipe(
@@ -99,3 +103,151 @@ combineLatest([staircaseEGMotion, ofStaircaseLight])
         myLogger.info('Staircase: Setting timer time');
         toStaircaseLightTimer.next(240);
     });
+
+
+const toStaircase = toTopic('cmnd/treppenhaus1/POWER');
+
+
+interval(60000)
+    .pipe(
+        filter(_ => {
+            const hours = new Date().getHours();
+
+            return (hours === 7) || (hours === 17);
+        }),
+        debounce(_ => timer(Math.random() * 1000 * 600))
+    )
+    .subscribe(_ => {
+            toEgFlur.next('ON');
+        }
+    );
+
+interval(60000)
+    .pipe(
+        filter(_ => {
+            const hours = new Date().getHours();
+
+            return (hours === 8) || (hours === 22);
+        }),
+        debounce(_ => timer(Math.random() * 1000 * 600))
+    )
+    .subscribe(_ => {
+            toEgFlur.next('OFF');
+        }
+    );
+
+interval(900000)
+    .pipe(
+        filter(_ => {
+            const hours = new Date().getHours();
+
+            return (hours === 17 && hours <= 22);
+        }),
+        debounce(_ => timer(Math.random() * 1000 * 600))
+    )
+    .subscribe(_ => {
+            toStaircase.next('ON');
+        }
+    );
+
+interval(60000)
+    .pipe(
+        filter(_ => {
+            const hours = new Date().getHours();
+
+            return (hours === 6) || (hours === 19);
+        }),
+        debounce(_ => timer(Math.random() * 1000 * 600))
+    )
+    .subscribe(_ => {
+            toOgFlur.next('ON');
+        }
+    );
+
+interval(60000)
+    .pipe(
+        filter(_ => {
+            const hours = new Date().getHours();
+
+            return (hours === 8) || (hours === 21);
+        }),
+        debounce(_ => timer(Math.random() * 1000 * 600))
+    )
+    .subscribe(_ => {
+            toOgFlur.next('OFF');
+        }
+    );
+
+interval(60000)
+    .pipe(
+        filter(_ => {
+            const hours = new Date().getHours();
+
+            return (hours === 3) || (hours === 18);
+        }),
+        debounce(_ => timer(Math.random() * 1000 * 300))
+    )
+    .subscribe(_ => {
+            toBasement.next('ON');
+        }
+    );
+
+interval(60000)
+    .pipe(
+        filter(_ => {
+            const hours = new Date().getHours();
+
+            return (hours === 4) || (hours === 19);
+        }),
+        debounce(_ => timer(Math.random() * 1000 * 300))
+    )
+    .subscribe(_ => {
+            toBasement.next('OFF');
+        }
+    );
+
+interval(60000)
+    .pipe(
+        filter(_ => {
+            const hours = new Date().getHours();
+
+            return (hours === 23) || (hours === 9);
+        }),
+        debounce(_ => timer(Math.random() * 1000 * 300))
+    )
+    .subscribe(_ => {
+            toEgFlur.next('OFF');
+            toBasement.next('OFF');
+            toOgFlur.next('OFF');
+            toStaircase.next('OFF');
+        }
+    );
+
+// interval(20000)
+//     .pipe(
+//         delay(Math.random() * 1000 * 10/* * 60 * 5 */),
+//         filter(_ => {
+//             const hours = new Date().getHours();
+//
+//             return (hours >= 7 && hours <= 9) || (hours >= 16 && hours <= 22);
+//         }),
+//         tap(_ => toBasement.next('ON')),
+//         delay(Math.random() * 1000 * 10 /* * 30 */),
+//         tap(_ => tostaircase.next('ON')),
+//         delay(Math.random() * 1000 * 10 /* * 30 */),
+//         tap(_ => toEgFlur.next('ON')),
+//         delay(Math.random() * 1000 * 10/* * 30 */),
+//         tap(_ => toOgFlur.next('ON')),
+//         delay(Math.random() * 1000 * 10 /* * 30 */),
+//         tap(_ => toOgFlur.next('OFF')),
+//         delay(Math.random() * 1000 * 10 /* * 30 */),
+//         tap(_ => toEgFlur.next('OFF')),
+//         delay(Math.random() * 1000 * 10 /* * 30 */),
+//         tap(_ => toBasement.next('OFF'))
+//     )
+//     .subscribe(_ => {
+//         toOgFlur.next('OFF');
+//         toEgFlur.next('OFF');
+//         tostaircase.next('OFF');
+//         toBasement.next('OFF');
+//     });
