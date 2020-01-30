@@ -113,6 +113,7 @@ interval(60000)
         debounce(_ => timer(Math.random() * 1000 * 600))
     )
     .subscribe(_ => {
+            myLogger.info('EG Flur ON');
             toEgFlur.next('ON');
         }
     );
@@ -127,6 +128,7 @@ interval(60000)
         debounce(_ => timer(Math.random() * 1000 * 600))
     )
     .subscribe(_ => {
+            myLogger.info('EG Flur OFF');
             toEgFlur.next('OFF');
         }
     );
@@ -141,6 +143,7 @@ interval(900000)
         debounce(_ => timer(Math.random() * 1000 * 600))
     )
     .subscribe(_ => {
+            myLogger.info('Treppenhaus on');
             toStaircase.next('ON');
         }
     );
@@ -155,6 +158,7 @@ interval(60000)
         debounce(_ => timer(Math.random() * 1000 * 600))
     )
     .subscribe(_ => {
+            myLogger.info('OG Flur ON');
             toOgFlur.next('ON');
         }
     );
@@ -169,6 +173,7 @@ interval(60000)
         debounce(_ => timer(Math.random() * 1000 * 600))
     )
     .subscribe(_ => {
+            myLogger.info('OG Flur OFF');
             toOgFlur.next('OFF');
         }
     );
@@ -183,6 +188,7 @@ interval(60000)
         debounce(_ => timer(Math.random() * 1000 * 300))
     )
     .subscribe(_ => {
+            myLogger.info('Basement ON');
             toBasement.next('ON');
         }
     );
@@ -197,6 +203,7 @@ interval(60000)
         debounce(_ => timer(Math.random() * 1000 * 300))
     )
     .subscribe(_ => {
+            myLogger.info('Basement OFF');
             toBasement.next('OFF');
         }
     );
