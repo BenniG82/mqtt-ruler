@@ -1,4 +1,4 @@
-import { debounceTime, delay, filter, map, switchMapTo, tap } from 'rxjs/internal/operators';
+import { debounceTime, delay, filter, map, switchMapTo, tap, withLatestFrom } from 'rxjs/internal/operators';
 import { myLogger } from './logger';
 import { ofTopic } from './event-source';
 import { toTopic } from './event-sink';
@@ -116,16 +116,20 @@ combineLatest([dg02Motion, ofNucPower])
         filter(([motion, light]) => light.message === 'ON')
     )
     .subscribe(_ => {
-        myLogger.info('Staircase: Setting timer time');
+        myLogger.info('Nuc: Setting timer time');
         toNucTimer.next(600);
     });
 
 const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER');
+const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER');
 const toKgGarage = toTopic<string>('cmnd/kg-garage/POWER');
 const toKg02 = toTopic<string>('cmnd/kg-02/POWER');
 
 fromKgFlur.pipe(
-    filter(v => v.message === 'OFF'),
+    delay(500),
+    withLatestFrom(fromKgFlurStatus),
+    map(([_, status]) => status),
+    filter(status => status.message === 'OFF'),
     tap(_ => toKg02.next('OFF')),
     tap(_ => toKgGarage.next('OFF'))
 ).subscribe()
