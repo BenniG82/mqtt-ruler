@@ -121,7 +121,7 @@ combineLatest([dg02Motion, ofNucPower])
     });
 
 const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER');
-const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER');
+const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER1');
 const toKgGarage = toTopic<string>('cmnd/kg-garage/POWER');
 const toKg02 = toTopic<string>('cmnd/kg-02/POWER');
 
