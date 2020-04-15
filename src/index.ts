@@ -1,8 +1,8 @@
-import { debounce, debounceTime, delay, filter, map, switchMapTo, tap } from 'rxjs/internal/operators';
+import { debounceTime, delay, filter, map, switchMapTo, tap } from 'rxjs/internal/operators';
 import { myLogger } from './logger';
 import { ofTopic } from './event-source';
 import { toTopic } from './event-sink';
-import { combineLatest, interval, of, timer } from 'rxjs';
+import { combineLatest, of } from 'rxjs';
 
 interface Button {
     battery: number;
@@ -62,8 +62,8 @@ ofButtonSchlafzimmer
         }
     });
 
-const staircaseEGMotion = ofTopic<MotionSensor>('zigbee2mqtt/EG_Treppenhaus_Bewegung');
 const staircaseOGMotion = ofTopic<MotionSensor>('zigbee2mqtt/OG_Treppenhaus_Bewegung');
+const staircaseEGMotion = ofTopic<MotionSensor>('zigbee2mqtt/EG_Treppenhaus_Bewegung');
 const ofStaircaseLight = ofTopic<string>('stat/treppenhaus/POWER');
 const toStaircaseLightTimer = toTopic<number>('cmnd/treppenhaus/RuleTimer1');
 
@@ -102,6 +102,35 @@ combineLatest([staircaseEGMotion, ofStaircaseLight])
         myLogger.info('Staircase: Setting timer time');
         toStaircaseLightTimer.next(240);
     });
+
+
+const dg02Motion = ofTopic<MotionSensor>('zigbee2mqtt/OG_Bad_Bewegung');
+const ofNucPower = ofTopic<string>('stat/nuc/POWER');
+const toNucTimer = toTopic<number>('cmnd/nuc/RuleTimer1');
+
+combineLatest([dg02Motion, ofNucPower])
+    .pipe(
+        debounceTime(5000),
+        tap(([motion, light]) => myLogger.info(`DG02 NUC prolonger ${JSON.stringify(motion)} ${light.message}`)),
+        filter(([motion, light]) => motion.message.occupancy),
+        filter(([motion, light]) => light.message === 'ON')
+    )
+    .subscribe(_ => {
+        myLogger.info('Staircase: Setting timer time');
+        toNucTimer.next(600);
+    });
+
+const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER');
+const toKgGarage = toTopic<string>('cmnd/kg-garage/POWER');
+const toKg02 = toTopic<string>('cmnd/kg-02/POWER');
+
+fromKgFlur.pipe(
+    filter(v => v.message === 'OFF'),
+    tap(_ => toKg02.next('OFF')),
+    tap(_ => toKgGarage.next('OFF'))
+).subscribe()
+
+/*
 
 interval(60000)
     .pipe(
@@ -224,6 +253,7 @@ interval(60000)
             toStaircase.next('OFF');
         }
     );
+*/
 
 // interval(20000)
 //     .pipe(
