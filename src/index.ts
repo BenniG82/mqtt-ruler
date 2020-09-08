@@ -78,7 +78,7 @@ combineLatest([staircaseOGMotion, ofStaircaseLight, ofEgFlur])
         filter(([motion, light]) => light.message === 'OFF'),
         filter(([motion, light, flur]) => flur.message === 'OFF'),
         filter(_ => new Date().getHours() >= 3),
-        filter(_ => new Date().getHours() <= 7),
+        filter(_ => new Date().getHours() <= 6),
         tap(_ => myLogger.info('Nightlight: Switching on')),
         tap(_ => toEgFlur.next('ON')),
         switchMapTo(
