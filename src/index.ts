@@ -124,8 +124,7 @@ const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER1');
 const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER');
 const fromKgGarage = ofTopic<string>('stat/kg-garage-tuer/switch');
 const fromKgGarageStatus = ofTopic<string>('stat/kg-garage/POWER');
-const fromKg3a = ofTopic<string>('stat/kg-03a/switch');
-const fromKg3aStatus = ofTopic<string>('stat/kg-03a/POWER');
+const fromKg3a = ofTopic<string>('stat/kg-03a/POWER');
 const toKgGarage = toTopic<string>('cmnd/kg-garage/POWER');
 const toKgFlur = toTopic<string>('cmnd/kg-flur/POWER');
 const toKg02 = toTopic<string>('cmnd/kg-02/POWER');
@@ -161,8 +160,6 @@ fromKgGarage.pipe(
 
 fromKg3a.pipe(
     delay(200),
-    withLatestFrom(fromKg3aStatus),
-    map(([_, status]) => status),
     filter(status => status.message === 'OFF'),
     tap(_ => toKg02.next('OFF')),
     tap(_ => toKgFlur.next('OFF')),
