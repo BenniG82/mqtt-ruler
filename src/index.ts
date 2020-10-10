@@ -1,30 +1,38 @@
-import { debounceTime, delay, filter, map, switchMapTo, tap, withLatestFrom } from 'rxjs/internal/operators';
+import { debounceTime, delay, distinctUntilChanged, filter, map, scan, startWith, tap, withLatestFrom } from 'rxjs/internal/operators';
 import { myLogger } from './logger';
-import { ofTopic } from './event-source';
+import { MqttMessage, ofTopic } from './event-source';
 import { toTopic } from './event-sink';
-import { combineLatest, of } from 'rxjs';
+import { combineLatest, interval } from 'rxjs';
 
-interface Button {
+export interface Button {
     battery: number;
     voltage: number;
     linkquality: number;
     click: 'single' | 'double' | 'triple' | 'quadruple';
 }
 
-interface MotionSensor {
+export interface MotionSensor {
     battery: number;
     voltage: number;
     illuminance: number;
     linkquality: number;
     occupancy: boolean;
+    occurrance?: Date;
 }
 
+export interface LightStatus {
+    status: 'ON' | 'OFF';
+    switchOffAt?: Date;
+}
+
+const ticker = interval(5000);
 const toEgFlur = toTopic('cmnd/eg-flur/POWER');
 const toOgFlur = toTopic('cmnd/og-flur/POWER');
 const toStaircase = toTopic('cmnd/treppenhaus/POWER');
 const toBasement = toTopic('cmnd/kg-flur/POWER');
 
-const ofEgFlur = ofTopic<string>('stat/eg-flur/POWER');
+const ofEgFlur = ofTopic<string>('stat/eg-flur/POWER')
+    .pipe(startWith({topic: '', message: 'OFF'} as MqttMessage<string>));
 
 const ofButtonSchlafzimmer = ofTopic<Button>('zigbee2mqtt/OG_Button_Schlafzimmer');
 const toOgSchlafzimmer = toTopic('cmnd/og-schlafzimmer/POWER');
@@ -62,58 +70,68 @@ ofButtonSchlafzimmer
         }
     });
 
-const staircaseOGMotion = ofTopic<MotionSensor>('zigbee2mqtt/OG_Treppenhaus_Bewegung');
+const staircaseOGMotion = ofTopic<MotionSensor>('zigbee2mqtt/OG_Treppenhaus_Bewegung')
+    .pipe(map(v => {
+        v.message.occurrance = new Date();
+
+        return v.message;
+    }));
 const staircaseEGMotion = ofTopic<MotionSensor>('zigbee2mqtt/EG_Treppenhaus_Bewegung');
 const ofStaircaseLight = ofTopic<string>('stat/treppenhaus/POWER');
 const toStaircaseLightTimer = toTopic<number>('cmnd/treppenhaus/RuleTimer1');
 
-combineLatest([staircaseOGMotion, ofStaircaseLight, ofEgFlur])
+combineLatest([staircaseOGMotion, ofEgFlur, ticker])
     .pipe(
-        debounceTime(5000),
-        tap(([motion, light, flur]) =>
-            myLogger.info(`StaircaseOGMotion m:${JSON.stringify(motion)} staircasse: ${JSON.stringify(light)} hall ${JSON.stringify(flur)}`)
-        ),
-        filter(([motion]) => motion.message.illuminance < 10),
-        filter(([motion]) => motion.message.occupancy),
-        filter(([motion, light]) => light.message === 'OFF'),
-        filter(([motion, light, flur]) => flur.message === 'OFF'),
-        filter(_ => new Date().getHours() >= 3),
-        filter(_ => new Date().getHours() <= 6),
-        tap(_ => myLogger.info('Nightlight: Switching on')),
-        tap(_ => toEgFlur.next('ON')),
-        switchMapTo(
-            of(undefined)
-                .pipe(delay(60000))
-        )
+        scan((acc, [currentmotion, currentEgState]) => {
+            const now = new Date();
+            if (
+                now.getHours() >= 3
+                && now.getHours() <= 6
+                && currentmotion.occupancy
+                && currentmotion.illuminance < 10
+            ) {
+                acc.switchOffAt = new Date(currentmotion.occurrance.getTime() + 120000);
+                acc.status = 'ON';
+            } else if (acc.switchOffAt > new Date() && currentEgState.message === 'OFF') {
+                acc.status = 'OFF';
+                acc.switchOffAt = new Date();
+            }
+
+            if (acc.switchOffAt < new Date() && currentEgState.message === 'ON') {
+                acc.status = 'OFF';
+            }
+
+            return {...acc};
+        }, {status: 'OFF', switchOffAt: new Date()} as LightStatus),
+        distinctUntilChanged((a, b) => a.status === b.status && a.switchOffAt.getTime() === b.switchOffAt.getTime())
     )
-    .subscribe(_ => {
-        myLogger.info('Nightlight: Switching off');
-        toEgFlur.next('OFF');
-    });
+    .subscribe(value => {
+            myLogger.info('Nightlight:', value);
+            toEgFlur.next(value.status);
+        }
+    );
 
 combineLatest([staircaseEGMotion, ofStaircaseLight])
     .pipe(
         debounceTime(5000),
         tap(([motion, light]) => myLogger.info(`Staircase Light prolonger ${JSON.stringify(motion)} ${light.message}`)),
-        filter(([motion, light]) => motion.message.occupancy),
-        filter(([motion, light]) => light.message === 'ON')
+        filter(([motion, light]) => motion.message.occupancy && light.message === 'ON')
     )
     .subscribe(_ => {
         myLogger.info('Staircase: Setting timer time');
         toStaircaseLightTimer.next(240);
     });
 
-
 const dg02Motion = ofTopic<MotionSensor>('zigbee2mqtt/OG_Bad_Bewegung');
-const ofNucPower = ofTopic<string>('stat/nuc/POWER');
+const ofNucPower = ofTopic<string>('stat/nuc/POWER')
+    .pipe(startWith({topic: '', message: 'ON'} as MqttMessage<string>));
 const toNucTimer = toTopic<number>('cmnd/nuc/RuleTimer1');
 
 combineLatest([dg02Motion, ofNucPower])
     .pipe(
         debounceTime(5000),
-        tap(([motion, light]) => myLogger.info(`DG02 NUC prolonger ${JSON.stringify(motion)} ${light.message}`)),
-        filter(([motion, light]) => motion.message.occupancy),
-        filter(([motion, light]) => light.message === 'ON')
+        tap(([motion, nuc]) => myLogger.info(`DG02 NUC prolonger ${JSON.stringify(motion)} ${nuc.message}`)),
+        filter(([motion, nuc]) => motion.message.occupancy && nuc.message === 'ON')
     )
     .subscribe(_ => {
         myLogger.info('Nuc: Setting timer time');
@@ -168,130 +186,128 @@ fromKg3a.pipe(
     tap(_ => toKg06.next('OFF'))
 )
     .subscribe();
-/*
-
-interval(60000)
-    .pipe(
-        filter(_ => {
-            const hours = new Date().getHours();
-
-            return (hours === 7) || (hours === 17);
-        }),
-        debounce(_ => timer(Math.random() * 1000 * 600))
-    )
-    .subscribe(_ => {
-            myLogger.info('EG Flur ON');
-            toEgFlur.next('ON');
-        }
-    );
-
-interval(60000)
-    .pipe(
-        filter(_ => {
-            const hours = new Date().getHours();
-
-            return (hours === 8) || (hours === 22);
-        }),
-        debounce(_ => timer(Math.random() * 1000 * 600))
-    )
-    .subscribe(_ => {
-            myLogger.info('EG Flur OFF');
-            toEgFlur.next('OFF');
-        }
-    );
-
-interval(900000)
-    .pipe(
-        filter(_ => {
-            const hours = new Date().getHours();
-
-            return (hours === 17 && hours <= 22);
-        }),
-        debounce(_ => timer(Math.random() * 1000 * 600))
-    )
-    .subscribe(_ => {
-            myLogger.info('Treppenhaus on');
-            toStaircase.next('ON');
-        }
-    );
-
-interval(60000)
-    .pipe(
-        filter(_ => {
-            const hours = new Date().getHours();
-
-            return (hours === 6) || (hours === 19);
-        }),
-        debounce(_ => timer(Math.random() * 1000 * 600))
-    )
-    .subscribe(_ => {
-            myLogger.info('OG Flur ON');
-            toOgFlur.next('ON');
-        }
-    );
-
-interval(60000)
-    .pipe(
-        filter(_ => {
-            const hours = new Date().getHours();
-
-            return (hours === 8) || (hours === 21);
-        }),
-        debounce(_ => timer(Math.random() * 1000 * 600))
-    )
-    .subscribe(_ => {
-            myLogger.info('OG Flur OFF');
-            toOgFlur.next('OFF');
-        }
-    );
-
-interval(60000)
-    .pipe(
-        filter(_ => {
-            const hours = new Date().getHours();
-
-            return (hours === 3) || (hours === 18);
-        }),
-        debounce(_ => timer(Math.random() * 1000 * 300))
-    )
-    .subscribe(_ => {
-            myLogger.info('Basement ON');
-            toBasement.next('ON');
-        }
-    );
-
-interval(60000)
-    .pipe(
-        filter(_ => {
-            const hours = new Date().getHours();
-
-            return (hours === 4) || (hours === 19);
-        }),
-        debounce(_ => timer(Math.random() * 1000 * 300))
-    )
-    .subscribe(_ => {
-            myLogger.info('Basement OFF');
-            toBasement.next('OFF');
-        }
-    );
-
-interval(60000)
-    .pipe(
-        filter(_ => {
-            const hours = new Date().getHours();
-
-            return (hours === 23) || (hours === 9);
-        }),
-        debounce(_ => timer(Math.random() * 1000 * 300))
-    )
-    .subscribe(_ => {
-            toEgFlur.next('OFF');
-            toBasement.next('OFF');
-            toOgFlur.next('OFF');
-            toStaircase.next('OFF');
-        }
-    );
-*/
+//
+// interval(60000)
+//     .pipe(
+//         filter(_ => {
+//             const hours = new Date().getHours();
+//
+//             return (hours === 7) || (hours === 17);
+//         }),
+//         debounce(_ => timer(Math.random() * 1000 * 600))
+//     )
+//     .subscribe(_ => {
+//             myLogger.info('EG Flur ON');
+//             toEgFlur.next('ON');
+//         }
+//     );
+//
+// interval(60000)
+//     .pipe(
+//         filter(_ => {
+//             const hours = new Date().getHours();
+//
+//             return (hours === 8) || (hours === 22);
+//         }),
+//         debounce(_ => timer(Math.random() * 1000 * 600))
+//     )
+//     .subscribe(_ => {
+//             myLogger.info('EG Flur OFF');
+//             toEgFlur.next('OFF');
+//         }
+//     );
+//
+// interval(900000)
+//     .pipe(
+//         filter(_ => {
+//             const hours = new Date().getHours();
+//
+//             return (hours === 17 && hours <= 22);
+//         }),
+//         debounce(_ => timer(Math.random() * 1000 * 600))
+//     )
+//     .subscribe(_ => {
+//             myLogger.info('Treppenhaus on');
+//             toStaircase.next('ON');
+//         }
+//     );
+//
+// interval(60000)
+//     .pipe(
+//         filter(_ => {
+//             const hours = new Date().getHours();
+//
+//             return (hours === 6) || (hours === 19);
+//         }),
+//         debounce(_ => timer(Math.random() * 1000 * 600))
+//     )
+//     .subscribe(_ => {
+//             myLogger.info('OG Flur ON');
+//             toOgFlur.next('ON');
+//         }
+//     );
+//
+// interval(60000)
+//     .pipe(
+//         filter(_ => {
+//             const hours = new Date().getHours();
+//
+//             return (hours === 8) || (hours === 21);
+//         }),
+//         debounce(_ => timer(Math.random() * 1000 * 600))
+//     )
+//     .subscribe(_ => {
+//             myLogger.info('OG Flur OFF');
+//             toOgFlur.next('OFF');
+//         }
+//     );
+//
+// interval(60000)
+//     .pipe(
+//         filter(_ => {
+//             const hours = new Date().getHours();
+//
+//             return (hours === 3) || (hours === 18);
+//         }),
+//         debounce(_ => timer(Math.random() * 1000 * 300))
+//     )
+//     .subscribe(_ => {
+//             myLogger.info('Basement ON');
+//             toBasement.next('ON');
+//         }
+//     );
+//
+// interval(60000)
+//     .pipe(
+//         filter(_ => {
+//             const hours = new Date().getHours();
+//
+//             return (hours === 4) || (hours === 19);
+//         }),
+//         debounce(_ => timer(Math.random() * 1000 * 300))
+//     )
+//     .subscribe(_ => {
+//             myLogger.info('Basement OFF');
+//             toBasement.next('OFF');
+//         }
+//     );
+//
+// interval(60000)
+//     .pipe(
+//         filter(_ => {
+//             const hours = new Date().getHours();
+//
+//             return (hours === 23) || (hours === 9);
+//         }),
+//         debounce(_ => timer(Math.random() * 1000 * 300))
+//     )
+//     .subscribe(_ => {
+//             toEgFlur.next('OFF');
+//             toBasement.next('OFF');
+//             toOgFlur.next('OFF');
+//             toStaircase.next('OFF');
+//         }
+//     );
 
 // interval(20000)
 //     .pipe(
