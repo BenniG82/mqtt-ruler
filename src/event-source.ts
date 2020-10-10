@@ -27,7 +27,9 @@ export class EventSource<T> {
             clientId: `MqttRuler Source - ${shortid.generate()}`,
             keepalive: 60,
             password: mqttServerConfig.password,
-            username: mqttServerConfig.username
+            username: mqttServerConfig.username,
+            reconnectPeriod: 2000,
+            resubscribe: true
         });
 
         this.client.on('connect', () => {
@@ -49,7 +51,7 @@ export class EventSource<T> {
             myLogger.info('Closed');
         });
         this.client.on('message', (messageTopic: string, buffer: Buffer) => {
-            myLogger.info('Callback called');
+            myLogger.debug('Callback called');
             const messag = buffer.toString();
             let msg: any = messag;
             if (messag?.charAt(0) === '{' && messag?.charAt(messag?.length - 1) === '}') {

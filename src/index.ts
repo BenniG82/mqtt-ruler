@@ -130,11 +130,11 @@ const toNucTimer = toTopic<number>('cmnd/nuc/RuleTimer1');
 combineLatest([dg02Motion, ofNucPower])
     .pipe(
         debounceTime(5000),
-        tap(([motion, nuc]) => myLogger.info(`DG02 NUC prolonger ${JSON.stringify(motion)} ${nuc.message}`)),
+        tap(([motion, nuc]) => myLogger.debug(`DG02 NUC prolonger ${JSON.stringify(motion)} ${nuc.message}`)),
         filter(([motion, nuc]) => motion.message.occupancy && nuc.message === 'ON')
     )
     .subscribe(_ => {
-        myLogger.info('Nuc: Setting timer time');
+        myLogger.debug('Nuc: Setting timer time');
         toNucTimer.next(600);
     });
 

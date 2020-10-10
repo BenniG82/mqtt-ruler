@@ -9,17 +9,17 @@
   "author": "Benjamin Gniza",
   "license": "MIT",
   "dependencies": {
-    "mqtt": "^3.0.0",
-    "rxjs": "^6.5.4",
+    "mqtt": "^4.2.1",
+    "rxjs": "^6.6.3",
     "shortid": "^2.2.15",
-    "typescript": "^3.7.4",
-    "winston": "^3.2.1"
+    "typescript": "^3.9.7",
+    "winston": "^3.3.3"
   },
   "devDependencies": {
-    "@types/node": "^13.1.6",
+    "@types/node": "^13.13.25",
     "@types/shortid": "0.0.29",
     "@types/winston": "^2.4.4",
-    "angular-tslint-rules": "^1.20.3",
+    "angular-tslint-rules": "^1.20.4",
     "tslint": "^5.20.1"
   }
 }
