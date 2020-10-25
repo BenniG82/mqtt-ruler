@@ -151,6 +151,10 @@ const toKg03 = toTopic<string>('cmnd/kg-03/POWER');
 const toKg03a = toTopic<string>('cmnd/kg-03a/POWER');
 const toKg06 = toTopic<string>('cmnd/kg-06/POWER');
 
+const fromKgGarageKeller = ofTopic<string>('stat/kg-garage-slave/POWER');
+
+fromKgGarageKeller.subscribe(message => toKgGarage.next(message.message));
+
 fromKgAlle.pipe(
     filter(power => power.message === 'OFF'),
     // filter(status => status.message === 'OFF'),
