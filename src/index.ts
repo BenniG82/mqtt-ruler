@@ -187,17 +187,35 @@ const kg03aOff = combineLatest([fromKg3aStatus, fromKg03Cmnd])
         filter(status => status.message === 'OFF')
     );
 
-merge(kgFlurOff, kgGarageOff, kg03aOff)
+kgGarageOff
     .pipe(
         tap(_ => toKg02.next('OFF')),
         tap(_ => toKgFlur.next('OFF')),
-        tap(_ => toKgGarageEvt.next('EV_Power=OFF')),
         tap(_ => toKg03.next('OFF')),
         tap(_ => toKg03a.next('OFF')),
         tap(_ => toKg06.next('OFF'))
     )
     .subscribe();
 
+kgFlurOff
+    .pipe(
+        tap(_ => toKg02.next('OFF')),
+        tap(_ => toKgGarage.next('OFF')),
+        tap(_ => toKg03.next('OFF')),
+        tap(_ => toKg03a.next('OFF')),
+        tap(_ => toKg06.next('OFF'))
+    )
+    .subscribe();
+
+kg03aOff
+    .pipe(
+        tap(_ => toKg02.next('OFF')),
+        tap(_ => toKgFlur.next('OFF')),
+        tap(_ => toKgGarage.next('OFF')),
+        tap(_ => toKg03.next('OFF')),
+        tap(_ => toKg06.next('OFF'))
+    )
+    .subscribe();
 // fromKgGarage.pipe(
 //     delay(200),
 //     withLatestFrom(fromKgGarageStatus),
