@@ -1,4 +1,4 @@
-import { debounceTime, delay, distinctUntilChanged, filter, map, scan, startWith, tap, withLatestFrom } from 'rxjs/internal/operators';
+import { debounceTime, distinctUntilChanged, filter, map, scan, startWith, tap } from 'rxjs/internal/operators';
 import { myLogger } from './logger';
 import { MqttMessage, ofTopic } from './event-source';
 import { toTopic } from './event-sink';
@@ -144,27 +144,32 @@ const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER');
 const fromKgGarage = ofTopic<string>('stat/kg-garage-tuer/switch');
 const fromKgGarageStatus = ofTopic<string>('stat/kg-garage/POWER');
 const fromKg3a = ofTopic<string>('stat/kg-03a/POWER');
-const toKgGarageEvent = toTopic<string>('cmnd/kg-garage/EVENT');
+const toKgGarage = toTopic<string>('cmnd/kg-garage/POWER');
 const toKgFlur = toTopic<string>('cmnd/kg-flur/POWER');
 const toKg02 = toTopic<string>('cmnd/kg-02/POWER');
 const toKg03 = toTopic<string>('cmnd/kg-03/POWER');
 const toKg03a = toTopic<string>('cmnd/kg-03a/POWER');
 const toKg06 = toTopic<string>('cmnd/kg-06/POWER');
 
-const fromKgGarageKeller = ofTopic<string>('stat/kg-garage-slave/POWER');
+const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER')
+    .pipe(
+        map(message => ({...message, time: new Date().getTime()})),
+        startWith({message: '', time: 0})
+    );
 
-fromKgGarageKeller.subscribe(message => toKgGarageEvent.next('EV_Power=toggle'));
-
-fromKgAlle.pipe(
-    filter(power => power.message === 'OFF'),
-    // filter(status => status.message === 'OFF'),
-    tap(_ => toKg02.next('OFF')),
-    tap(_ => toKgFlur.next('OFF')),
-    tap(_ => toKgGarageEvent.next('EV_Power=OFF')),
-    tap(_ => toKg03.next('OFF')),
-    tap(_ => toKg03a.next('OFF')),
-    tap(_ => toKg06.next('OFF'))
-)
+combineLatest([fromKgAlle, fromKgGarageCmnd])
+    .pipe(
+        filter(([_, garageCmnd]) => (new Date().getTime() - garageCmnd.time < 1000)),
+        map(([alle]) => alle),
+        filter(power => power.message === 'OFF'),
+        // filter(status => status.message === 'OFF'),
+        tap(_ => toKg02.next('OFF')),
+        tap(_ => toKgFlur.next('OFF')),
+        tap(_ => toKgGarage.next('OFF')),
+        tap(_ => toKg03.next('OFF')),
+        tap(_ => toKg03a.next('OFF')),
+        tap(_ => toKg06.next('OFF'))
+    )
     .subscribe();
 
 // fromKgGarage.pipe(
