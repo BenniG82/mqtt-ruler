@@ -159,7 +159,7 @@ const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER')
 
 combineLatest([fromKgAlle, fromKgGarageCmnd])
     .pipe(
-        filter(([_, garageCmnd]) => (new Date().getTime() - garageCmnd.time < 1000)),
+        filter(([_, garageCmnd]) => (new Date().getTime() - garageCmnd.time > 1000)),
         map(([alle]) => alle),
         filter(power => power.message === 'OFF'),
         // filter(status => status.message === 'OFF'),
