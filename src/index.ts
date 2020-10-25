@@ -1,8 +1,8 @@
-import { debounceTime, distinctUntilChanged, filter, map, scan, startWith, tap } from 'rxjs/internal/operators';
+import { debounceTime, distinctUntilChanged, filter, map, mergeAll, scan, startWith, tap } from 'rxjs/internal/operators';
 import { myLogger } from './logger';
 import { MqttMessage, ofTopic } from './event-source';
 import { toTopic } from './event-sink';
-import { combineLatest, interval } from 'rxjs';
+import { combineLatest, interval, merge } from 'rxjs';
 
 export interface Button {
     battery: number;
@@ -143,7 +143,7 @@ const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER1');
 const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER');
 const fromKgGarage = ofTopic<string>('stat/kg-garage-tuer/switch');
 const fromKgGarageStatus = ofTopic<string>('stat/kg-garage/POWER');
-const fromKg3a = ofTopic<string>('stat/kg-03a/POWER');
+const fromKg3aStatus = ofTopic<string>('stat/kg-03a/POWER');
 const toKgGarage = toTopic<string>('cmnd/kg-garage/POWER');
 const toKgGarageEvt = toTopic<string>('cmnd/kg-garage/EVENT');
 const toKgFlur = toTopic<string>('cmnd/kg-flur/POWER');
@@ -157,15 +157,41 @@ const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER1')
         map(message => ({...message, time: new Date().getTime()})),
         startWith({message: '', time: 0})
     );
+const fromKgFlurCmnd = ofTopic<string>('cmnd/kg-flur/POWER1')
+    .pipe(
+        map(message => ({...message, time: new Date().getTime()})),
+        startWith({message: '', time: 0})
+    );
+const fromKg03Cmnd = ofTopic<string>('cmnd/kg-03a/POWER1')
+    .pipe(
+        map(message => ({...message, time: new Date().getTime()})),
+        startWith({message: '', time: 0})
+    );
 
-combineLatest([fromKgAlle, fromKgGarageCmnd])
+const kgFlurOff = combineLatest([fromKgFlurStatus, fromKgFlurCmnd])
     .pipe(
         debounceTime(100),
-        tap(([_, garageCmnd]) => console.log(new Date().getTime() - garageCmnd.time)),
         filter(([_, garageCmnd]) => ((new Date().getTime() - garageCmnd.time) > 1000)),
-        map(([alle]) => alle),
-        filter(power => power.message === 'OFF'),
-        // filter(status => status.message === 'OFF'),
+        map(([status]) => status),
+        filter(status => status.message === 'OFF')
+    );
+const kgGarageOff = combineLatest([fromKgGarageStatus, fromKgGarageCmnd])
+    .pipe(
+        debounceTime(100),
+        filter(([_, garageCmnd]) => ((new Date().getTime() - garageCmnd.time) > 1000)),
+        map(([status]) => status),
+        filter(status => status.message === 'OFF')
+    );
+const kg03aOff = combineLatest([fromKg3aStatus, fromKg03Cmnd])
+    .pipe(
+        debounceTime(100),
+        filter(([_, garageCmnd]) => ((new Date().getTime() - garageCmnd.time) > 1000)),
+        map(([status]) => status),
+        filter(status => status.message === 'OFF')
+    );
+
+merge(kgFlurOff, kgGarageOff, kg03aOff)
+    .pipe(
         tap(_ => toKg02.next('OFF')),
         tap(_ => toKgFlur.next('OFF')),
         tap(_ => toKgGarageEvt.next('EV_Power=OFF')),
