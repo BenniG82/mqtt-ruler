@@ -138,6 +138,7 @@ combineLatest([dg02Motion, ofNucPower])
         toNucTimer.next(600);
     });
 
+const fromKgAlle = ofTopic<string>('cmnd/keller_alle/power');
 const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER1');
 const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER');
 const fromKgGarage = ofTopic<string>('stat/kg-garage-tuer/switch');
@@ -150,12 +151,11 @@ const toKg03 = toTopic<string>('cmnd/kg-03/POWER');
 const toKg03a = toTopic<string>('cmnd/kg-03a/POWER');
 const toKg06 = toTopic<string>('cmnd/kg-06/POWER');
 
-fromKgFlur.pipe(
-    delay(200),
-    withLatestFrom(fromKgFlurStatus),
-    map(([_, status]) => status),
-    filter(status => status.message === 'OFF'),
+fromKgAlle.pipe(
+    filter(power => power.message === 'OFF'),
+    // filter(status => status.message === 'OFF'),
     tap(_ => toKg02.next('OFF')),
+    tap(_ => toKgFlur.next('OFF')),
     tap(_ => toKgGarage.next('OFF')),
     tap(_ => toKg03.next('OFF')),
     tap(_ => toKg03a.next('OFF')),
@@ -163,29 +163,29 @@ fromKgFlur.pipe(
 )
     .subscribe();
 
-fromKgGarage.pipe(
-    delay(200),
-    withLatestFrom(fromKgGarageStatus),
-    map(([_, status]) => status),
-    filter(status => status.message === 'OFF'),
-    tap(_ => toKg02.next('OFF')),
-    tap(_ => toKgFlur.next('OFF')),
-    tap(_ => toKg03.next('OFF')),
-    tap(_ => toKg03a.next('OFF')),
-    tap(_ => toKg06.next('OFF'))
-)
-    .subscribe();
-
-fromKg3a.pipe(
-    delay(200),
-    filter(status => status.message === 'OFF'),
-    tap(_ => toKg02.next('OFF')),
-    tap(_ => toKgFlur.next('OFF')),
-    tap(_ => toKg03.next('OFF')),
-    tap(_ => toKgGarage.next('OFF')),
-    tap(_ => toKg06.next('OFF'))
-)
-    .subscribe();
+// fromKgGarage.pipe(
+//     delay(200),
+//     withLatestFrom(fromKgGarageStatus),
+//     map(([_, status]) => status),
+//     filter(status => status.message === 'OFF'),
+//     tap(_ => toKg02.next('OFF')),
+//     tap(_ => toKgFlur.next('OFF')),
+//     tap(_ => toKg03.next('OFF')),
+//     tap(_ => toKg03a.next('OFF')),
+//     tap(_ => toKg06.next('OFF'))
+// )
+//     .subscribe();
+//
+// fromKg3a.pipe(
+//     delay(200),
+//     filter(status => status.message === 'OFF'),
+//     tap(_ => toKg02.next('OFF')),
+//     tap(_ => toKgFlur.next('OFF')),
+//     tap(_ => toKg03.next('OFF')),
+//     tap(_ => toKgGarage.next('OFF')),
+//     tap(_ => toKg06.next('OFF'))
+// )
+//     .subscribe();
 //
 // interval(60000)
 //     .pipe(
