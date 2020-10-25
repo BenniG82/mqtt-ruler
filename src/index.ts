@@ -1,4 +1,4 @@
-import { debounceTime, distinctUntilChanged, filter, map, scan, startWith, tap } from 'rxjs/internal/operators';
+import { debounceTime, distinctUntilChanged, filter, map, scan, startWith, tap, withLatestFrom } from 'rxjs/internal/operators';
 import { myLogger } from './logger';
 import { MqttMessage, ofTopic } from './event-source';
 import { toTopic } from './event-sink';
@@ -139,7 +139,7 @@ combineLatest([dg02Motion, ofNucPower])
     });
 
 const fromKgAlle = ofTopic<string>('cmnd/keller_alle/power');
-const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER1');
+const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER');
 const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER');
 const fromKgGarage = ofTopic<string>('stat/kg-garage-tuer/switch');
 const fromKgGarageStatus = ofTopic<string>('stat/kg-garage/POWER');
@@ -157,14 +157,15 @@ const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER1')
         map(message => ({...message, time: new Date().getTime()})),
         startWith({message: '', time: 0})
     );
-const fromKgFlurCmnd = combineLatest([fromKgFlur, fromKgFlurStatus])
+const fromKgFlurCmnd = fromKgFlur
     .pipe(
-        filter(([cmnd]) => !!cmnd.message),
+        filter(cmnd => cmnd.message === 'TOGGLE'),
         debounceTime(100),
+        withLatestFrom(fromKgFlurStatus),
         map(([_, message]) => ({...message, time: new Date().getTime()})),
         startWith({message: '', time: 0})
     );
-const fromKg03Cmnd = ofTopic<string>('cmnd/kg-03a/POWER1')
+const fromKg03Cmnd = ofTopic<string>('cmnd/kg-03a/POWER')
     .pipe(
         map(message => ({...message, time: new Date().getTime()})),
         startWith({message: '', time: 0})
