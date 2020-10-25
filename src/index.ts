@@ -145,6 +145,7 @@ const fromKgGarage = ofTopic<string>('stat/kg-garage-tuer/switch');
 const fromKgGarageStatus = ofTopic<string>('stat/kg-garage/POWER');
 const fromKg3a = ofTopic<string>('stat/kg-03a/POWER');
 const toKgGarage = toTopic<string>('cmnd/kg-garage/POWER');
+const toKgGarageEvt = toTopic<string>('cmnd/kg-garage/EVENT');
 const toKgFlur = toTopic<string>('cmnd/kg-flur/POWER');
 const toKg02 = toTopic<string>('cmnd/kg-02/POWER');
 const toKg03 = toTopic<string>('cmnd/kg-03/POWER');
@@ -167,7 +168,7 @@ combineLatest([fromKgAlle, fromKgGarageCmnd])
         // filter(status => status.message === 'OFF'),
         tap(_ => toKg02.next('OFF')),
         tap(_ => toKgFlur.next('OFF')),
-        tap(_ => toKgGarage.next('OFF')),
+        tap(_ => toKgGarageEvt.next('EV_Power=OFF')),
         tap(_ => toKg03.next('OFF')),
         tap(_ => toKg03a.next('OFF')),
         tap(_ => toKg06.next('OFF'))
