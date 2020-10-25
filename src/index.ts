@@ -168,11 +168,8 @@ const fromKg03Cmnd = ofTopic<string>('cmnd/kg-03a/POWER1')
         startWith({message: '', time: 0})
     );
 
-const kgFlurOff = combineLatest([fromKgFlurStatus, fromKgFlurCmnd])
+const kgFlurOff = fromKgFlurCmnd
     .pipe(
-        debounceTime(100),
-        filter(([_, garageCmnd]) => ((new Date().getTime() - garageCmnd.time) > 1000)),
-        map(([status]) => status),
         filter(status => status.message === 'OFF')
     );
 const kgGarageOff = combineLatest([fromKgGarageStatus, fromKgGarageCmnd])
