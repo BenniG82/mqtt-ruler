@@ -144,7 +144,7 @@ const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER');
 const fromKgGarage = ofTopic<string>('stat/kg-garage-tuer/switch');
 const fromKgGarageStatus = ofTopic<string>('stat/kg-garage/POWER');
 const fromKg3a = ofTopic<string>('stat/kg-03a/POWER');
-const toKgGarage = toTopic<string>('cmnd/kg-garage/POWER');
+const toKgGarageEvent = toTopic<string>('cmnd/kg-garage/EVENT');
 const toKgFlur = toTopic<string>('cmnd/kg-flur/POWER');
 const toKg02 = toTopic<string>('cmnd/kg-02/POWER');
 const toKg03 = toTopic<string>('cmnd/kg-03/POWER');
@@ -153,14 +153,14 @@ const toKg06 = toTopic<string>('cmnd/kg-06/POWER');
 
 const fromKgGarageKeller = ofTopic<string>('stat/kg-garage-slave/POWER');
 
-fromKgGarageKeller.subscribe(message => toKgGarage.next(message.message));
+fromKgGarageKeller.subscribe(message => toKgGarageEvent.next('EV_Power=toggle'));
 
 fromKgAlle.pipe(
     filter(power => power.message === 'OFF'),
     // filter(status => status.message === 'OFF'),
     tap(_ => toKg02.next('OFF')),
     tap(_ => toKgFlur.next('OFF')),
-    tap(_ => toKgGarage.next('OFF')),
+    tap(_ => toKgGarageEvent.next('EV_Power=OFF')),
     tap(_ => toKg03.next('OFF')),
     tap(_ => toKg03a.next('OFF')),
     tap(_ => toKg06.next('OFF'))
