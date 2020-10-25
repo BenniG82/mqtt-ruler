@@ -157,9 +157,10 @@ const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER1')
         map(message => ({...message, time: new Date().getTime()})),
         startWith({message: '', time: 0})
     );
-const fromKgFlurCmnd = ofTopic<string>('cmnd/kg-flur/POWER1')
+const fromKgFlurCmnd = combineLatest([ofTopic<string>('cmnd/kg-flur/POWER1'), fromKgFlurStatus])
     .pipe(
-        map(message => ({...message, time: new Date().getTime()})),
+        debounceTime(100),
+        map(([_, message]) => ({...message, time: new Date().getTime()})),
         startWith({message: '', time: 0})
     );
 const fromKg03Cmnd = ofTopic<string>('cmnd/kg-03a/POWER1')
