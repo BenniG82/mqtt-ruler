@@ -152,7 +152,7 @@ const toKg03 = toTopic<string>('cmnd/kg-03/POWER');
 const toKg03a = toTopic<string>('cmnd/kg-03a/POWER');
 const toKg06 = toTopic<string>('cmnd/kg-06/POWER');
 
-const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER')
+const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER1')
     .pipe(
         map(message => ({...message, time: new Date().getTime()})),
         startWith({message: '', time: 0})
