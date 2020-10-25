@@ -1,4 +1,4 @@
-import { debounceTime, distinctUntilChanged, filter, map, mergeAll, scan, startWith, tap } from 'rxjs/internal/operators';
+import { debounceTime, distinctUntilChanged, filter, map, scan, startWith, tap } from 'rxjs/internal/operators';
 import { myLogger } from './logger';
 import { MqttMessage, ofTopic } from './event-source';
 import { toTopic } from './event-sink';
@@ -170,6 +170,7 @@ const fromKg03Cmnd = ofTopic<string>('cmnd/kg-03a/POWER1')
 
 const kgFlurOff = fromKgFlurCmnd
     .pipe(
+        distinctUntilChanged((m1, m2) => m1.message === m2.message),
         filter(status => status.message === 'OFF')
     );
 const kgGarageOff = combineLatest([fromKgGarageStatus, fromKgGarageCmnd])
@@ -177,6 +178,7 @@ const kgGarageOff = combineLatest([fromKgGarageStatus, fromKgGarageCmnd])
         debounceTime(100),
         filter(([_, garageCmnd]) => ((new Date().getTime() - garageCmnd.time) > 1000)),
         map(([status]) => status),
+        distinctUntilChanged((m1, m2) => m1.message === m2.message),
         filter(status => status.message === 'OFF')
     );
 const kg03aOff = combineLatest([fromKg3aStatus, fromKg03Cmnd])
@@ -184,22 +186,14 @@ const kg03aOff = combineLatest([fromKg3aStatus, fromKg03Cmnd])
         debounceTime(100),
         filter(([_, garageCmnd]) => ((new Date().getTime() - garageCmnd.time) > 1000)),
         map(([status]) => status),
+        distinctUntilChanged((m1, m2) => m1.message === m2.message),
         filter(status => status.message === 'OFF')
     );
 
-kgGarageOff
+merge(kgFlurOff, kgGarageOff, kg03aOff)
     .pipe(
         tap(_ => toKg02.next('OFF')),
         tap(_ => toKgFlur.next('OFF')),
-        tap(_ => toKg03.next('OFF')),
-        tap(_ => toKg03a.next('OFF')),
-        tap(_ => toKg06.next('OFF'))
-    )
-    .subscribe();
-
-kgFlurOff
-    .pipe(
-        tap(_ => toKg02.next('OFF')),
         tap(_ => toKgGarage.next('OFF')),
         tap(_ => toKg03.next('OFF')),
         tap(_ => toKg03a.next('OFF')),
@@ -207,15 +201,6 @@ kgFlurOff
     )
     .subscribe();
 
-kg03aOff
-    .pipe(
-        tap(_ => toKg02.next('OFF')),
-        tap(_ => toKgFlur.next('OFF')),
-        tap(_ => toKgGarage.next('OFF')),
-        tap(_ => toKg03.next('OFF')),
-        tap(_ => toKg06.next('OFF'))
-    )
-    .subscribe();
 // fromKgGarage.pipe(
 //     delay(200),
 //     withLatestFrom(fromKgGarageStatus),
