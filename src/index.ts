@@ -139,7 +139,7 @@ combineLatest([dg02Motion, ofNucPower])
     });
 
 const fromKgAlle = ofTopic<string>('cmnd/keller_alle/power');
-const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER');
+const fromKgFlur = ofTopic<string>('cmnd/kg-flur/POWER1');
 const fromKgFlurStatus = ofTopic<string>('stat/kg-flur/POWER');
 const fromKgGarage = ofTopic<string>('stat/kg-garage-tuer/switch');
 const fromKgGarageStatus = ofTopic<string>('stat/kg-garage/POWER');
