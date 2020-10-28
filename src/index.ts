@@ -159,10 +159,12 @@ const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER1')
     );
 const fromKgFlurCmnd = fromKgFlur
     .pipe(
+        tap(val => console.log('received from flur', val)),
         filter(cmnd => cmnd.message === 'TOGGLE'),
         debounceTime(100),
         withLatestFrom(fromKgFlurStatus),
-        map(([_, message]) => ({...message, time: new Date().getTime()})),
+        map(([_, message]) => message),
+        tap(val => console.log('mapped from flur', val)),
         startWith({message: '', time: 0})
     );
 const fromKg03Cmnd = ofTopic<string>('cmnd/kg-03a/POWER')
