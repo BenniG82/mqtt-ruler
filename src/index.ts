@@ -159,12 +159,10 @@ const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER1')
     );
 const fromKgFlurCmnd = fromKgFlur
     .pipe(
-        tap(val => console.log('received from flur', val)),
         filter(cmnd => cmnd.message === 'TOGGLE'),
         debounceTime(100),
         withLatestFrom(fromKgFlurStatus),
         map(([_, message]) => message),
-        tap(val => console.log('mapped from flur', val)),
         startWith({message: '', time: 0})
     );
 const fromKg03Cmnd = ofTopic<string>('cmnd/kg-03a/POWER')
@@ -175,7 +173,6 @@ const fromKg03Cmnd = ofTopic<string>('cmnd/kg-03a/POWER')
 
 const kgFlurOff = fromKgFlurCmnd
     .pipe(
-        distinctUntilChanged((m1, m2) => m1.message === m2.message),
         filter(status => status.message === 'OFF')
     );
 const kgGarageOff = combineLatest([fromKgGarageStatus, fromKgGarageCmnd])
@@ -184,7 +181,8 @@ const kgGarageOff = combineLatest([fromKgGarageStatus, fromKgGarageCmnd])
         filter(([_, garageCmnd]) => ((new Date().getTime() - garageCmnd.time) > 1000)),
         map(([status]) => status),
         distinctUntilChanged((m1, m2) => m1.message === m2.message),
-        filter(status => status.message === 'OFF')
+        filter(status => status.message === 'OFF'),
+        tap(msg => console.log('Keller off from Garage', msg))
     );
 const kg03aOff = combineLatest([fromKg3aStatus, fromKg03Cmnd])
     .pipe(
@@ -192,7 +190,8 @@ const kg03aOff = combineLatest([fromKg3aStatus, fromKg03Cmnd])
         filter(([_, garageCmnd]) => ((new Date().getTime() - garageCmnd.time) > 1000)),
         map(([status]) => status),
         distinctUntilChanged((m1, m2) => m1.message === m2.message),
-        filter(status => status.message === 'OFF')
+        filter(status => status.message === 'OFF'),
+        tap(msg => console.log('Keller off from Garage', msg))
     );
 
 merge(kgFlurOff, kgGarageOff, kg03aOff)
