@@ -160,7 +160,7 @@ const fromKgGarageCmnd = ofTopic<string>('cmnd/kg-garage/POWER1')
 const fromKgFlurCmnd = fromKgFlur
     .pipe(
         filter(cmnd => cmnd.message === 'TOGGLE'),
-        debounceTime(100),
+        debounceTime(500),
         withLatestFrom(fromKgFlurStatus),
         map(([_, message]) => message),
         startWith({message: '', time: 0})
